@@ -15,8 +15,8 @@
     "launch:gemma4": "ollama launch claude --model gemma4:e2b",
     "launch:gpt-oss": "ollama launch claude --model gpt-oss:20b",
     "start:backend": "node server.js",
-    "start:frontend": "npm run dev",
-    "test": "python tests/test_auth.py"
+    "start:frontend": "open http://localhost:3000",
+    "test": "node --test tests/auth.test.js"
   },
   "keywords": [],
   "author": "Rob Brennan <rob@sploosh.ai>",

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth Demo</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="background:#f4f5f7;margin:0;font-family:system-ui,sans-serif;">
+  <div id="root"></div>
+  <script type="text/babel">
+    function AuthForm() {
+      const [isLogin, setIsLogin] = React.useState(true);
+      const [username, setUsername] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [error, setError] = React.useState('');
+      const [message, setMessage] = React.useState('');
+      const [token, setToken] = React.useState('');
+
+      async function post(path, body) {
+        const res = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        return { status: res.status, data: await res.json() };
+      }
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(''); setMessage('');
+        try {
+          const { status, data } = await post(isLogin ? '/login' : '/signup', { username, password });
+          if (!status.toString().startsWith('2')) {
+            setError(data.error || 'Something went wrong');
+          } else {
+            setMessage(data.message);
+            setToken(data.token);
+          }
+        } catch {
+          setError('Network error — is the backend running?');
+        }
+      };
+
+      const handleRefresh = async () => {
+        setError(''); setMessage('');
+        try {
+          const { status, data } = await post('/token/refresh', { refreshToken: token });
+          if (status !== 200) {
+            setError(data.error || 'Refresh failed');
+          } else {
+            setMessage(data.message);
+            setToken(data.token);
+          }
+        } catch {
+          setError('Network error');
+        }
+      };
+
+      const input = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', boxSizing: 'border-box', fontSize: '15px' };
+
+      return (
+        <div style={{ maxWidth: '420px', margin: '60px auto', padding: '28px', background: 'white', borderRadius: '10px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '20px' }}>{isLogin ? '🔐 Login' : '📝 Sign Up'}</h2>
+
+          {error   && <p style={{ color: '#dc3545', background: '#fff5f5', padding: '10px', borderRadius: '4px', margin: '0 0 16px' }}>{error}</p>}
+          {message && <p style={{ color: '#28a745', background: '#f0fff4', padding: '10px', borderRadius: '4px', margin: '0 0 16px' }}>{message}</p>}
+          {token   && <p style={{ fontSize: '11px', wordBreak: 'break-all', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', margin: '0 0 16px' }}><strong>Token:</strong> {token}</p>}
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Username</label>
+              <input type="text" value={username} onChange={e => setUsername(e.target.value)} style={input} required />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Password</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={input} required />
+            </div>
+            <button type="submit" style={{ width: '100%', padding: '11px', background: isLogin ? '#007bff' : '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
+              {isLogin ? 'Login' : 'Sign Up'}
+            </button>
+          </form>
+
+          {token && (
+            <button onClick={handleRefresh} style={{ marginTop: '10px', width: '100%', padding: '11px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '15px' }}>
+              🔄 Refresh Token
+            </button>
+          )}
+
+          <p style={{ marginTop: '22px', textAlign: 'center', color: '#555' }}>
+            {isLogin ? "Don't have an account? " : 'Already have an account? '}
+            <button onClick={() => { setIsLogin(!isLogin); setError(''); setMessage(''); setToken(''); }}
+              style={{ color: '#007bff', border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '15px' }}>
+              {isLogin ? 'Sign Up' : 'Login'}
+            </button>
+          </p>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<AuthForm />);
+  </script>
+</body>
+</html>

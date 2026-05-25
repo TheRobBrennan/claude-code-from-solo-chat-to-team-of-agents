@@ -1,100 +1,91 @@
 const express = require('express');
-  const jwt = require('jsonwebtoken');
-  const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const path = require('path');
 
-  const app = express();
-  const PORT = 3000;
-  const JWT_SECRET = 'YOUR_SUPER_SECRET_KEY'; // In a real app, use environment variables
+const app = express();
+const PORT = 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 
-  // In-memory store for users and tokens (for simplicity as requested)
-  const users = {}; // { userId: { username: '...', passwordHash: '...' } }
-  const tokens = {}; // { token: userId }
+// In-memory stores
+const users = {};  // { userId: { username, passwordHash } }
+const tokens = {}; // { token: userId }
 
-  // Middleware
-  app.use(express.json());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-  // --- Dummy JWT Helper Functions ---
-  function generateToken(userId) {
-      return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '1h' });
+function generateToken(userId) {
+  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '1h' });
+}
+
+// POST /signup
+app.post('/signup', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
   }
 
-  // --- Routes ---
+  const existing = Object.values(users).find(u => u.username === username);
+  if (existing) {
+    return res.status(409).json({ error: 'User already exists' });
+  }
 
-  // POST /signup: Register a new user
-  app.post('/signup', async (req, res) => {
-      const { username, password } = req.body;
-      if (!username || !password) {
-          return res.status(400).json({ error: 'Username and password are required' });
-      }
+  try {
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userId = Date.now().toString();
+    users[userId] = { username, passwordHash };
+    const token = generateToken(userId);
+    tokens[token] = userId;
+    res.status(201).json({ message: 'User created successfully', token });
+  } catch (err) {
+    console.error('Signup error:', err);
+    res.status(500).json({ error: 'Server error during signup' });
+  }
+});
 
-      if (users[username]) {
-          return res.status(409).json({ error: 'User already exists' });
-      }
+// POST /login
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
 
-      try {
-          const salt = await bcrypt.genSalt(10);
-          const passwordHash = await bcrypt.hash(password, salt);
+  const userEntry = Object.entries(users).find(([, u]) => u.username === username);
+  if (!userEntry) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
 
-          // Simple in-memory store
-          const userId = Date.now().toString(); // Simple unique ID
-          users[userId] = { username, passwordHash };
+  const [userId, userRecord] = userEntry;
 
-          // Generate token upon successful signup
-          const token = generateToken(userId);
+  try {
+    const isMatch = await bcrypt.compare(password, userRecord.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = generateToken(userId);
+    tokens[token] = userId;
+    res.json({ message: 'Login successful', token });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error during login' });
+  }
+});
 
-          res.status(201).json({ message: 'User created successfully', userId, token });
-      } catch (error) {
-          console.error('Signup error:', error);
-          res.status(500).json({ error: 'Server error during signup' });
-      }
-  });
-  
-  // POST /login: Authenticate user and return a token
-  app.post('/login', async (req, res) => {
-      const { username, password } = req.body;
-  
-      const userRecord = Object.values(users).find(u => u.username === username);
-  
-      if (!userRecord) {
-          return res.status(401).json({ error: 'Invalid credentials' });
-      }
-  
-      try {
-          const isMatch = await bcrypt.compare(password, userRecord.passwordHash);
-          if (!isMatch) {
-          }   
-          
-          const userId = Object.keys(users).find(key => users[key].username === username);
-          const newToken = generateToken(userId);
-          
-          res.json({ message: 'Login successful', token: newToken });
-      } catch (error) {
-          console.error('Login error:', error);
-          res.status(500).json({ error: 'Server error during login' });
-      }   
-  }); 
-  
-  // POST /token/refresh: Refresh the JWT token (placeholder for real refresh flow)
-  app.post('/token/refresh', (req, res) => {
-      const { refreshToken } = req.body;
-      
-      if (!refreshToken) {
-          return res.status(400).json({ error: 'Refresh token is required' });
-      }   
-      
-      if (tokens[refreshToken]) {
-          const userId = tokens[refreshToken];
-          const newToken = generateToken(userId);
-          tokens[newToken] = userId; // Storing the new token map
-          res.json({ message: 'Token refreshed', newToken });
-      } else {
-          res.status(400).json({ error: 'Invalid refresh token' });
-      }   
-  }); 
-  
-  
-  // --- Start Server ---
-  app.listen(PORT, () => {
-      console.log(`Auth server running on http://localhost:${PORT}`);
-  }); 
-  
+// POST /token/refresh
+app.post('/token/refresh', (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    return res.status(400).json({ error: 'Refresh token is required' });
+  }
+
+  const userId = tokens[refreshToken];
+  if (!userId) {
+    return res.status(401).json({ error: 'Invalid refresh token' });
+  }
+
+  delete tokens[refreshToken];
+  const token = generateToken(userId);
+  tokens[token] = userId;
+  res.json({ message: 'Token refreshed', token });
+});
+
+app.listen(PORT, () => {
+  console.log(`Auth server running at http://localhost:${PORT}`);
+});
