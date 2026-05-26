@@ -36,21 +36,13 @@ Claude Code reliably spawned 4 parallel agents. `gemma4:e2b` completed the task 
 - [Node.js](https://nodejs.org) running locally
 - [Ollama](https://ollama.com) running locally with your target model pulled
 
-### Start the backend
+### Start everything
 
 ```bash
-npm run start:backend
+npm run start:app
 ```
 
-Server starts at `http://localhost:3000`.
-
-### View the frontend
-
-```bash
-npm run start:frontend
-```
-
-Opens `http://localhost:3000` in your browser — a React login/signup form served by the Express backend (no separate build step needed).
+Starts the Express backend, waits until it's healthy, then opens `http://localhost:3000` in your browser. The backend serves both the API and the React frontend — no separate build step needed.
 
 ### Run the tests
 
