@@ -4,6 +4,8 @@ Experiments in multi-agent orchestration, evolving from a single chat interactio
 
 Inspired by [@0x_rody](https://x.com/0x_rody/status/2058475548242784649).
 
+> **Note:** The agent-generated output (backend, frontend, tests) was scaffolded by `gemma4:e2b` via Claude Code's subagent feature, then completed and fixed using **Claude Desktop on macOS with Claude Sonnet 4.6**.
+
 ## The 3 levels
 
 | Level | What it is | Best for |
@@ -12,16 +14,10 @@ Inspired by [@0x_rody](https://x.com/0x_rody/status/2058475548242784649).
 | 2 — Agent View | Dashboard, sessions persist | 3–10 independent tasks |
 | 3 — Agent Teams | Lead + teammates, shared context | Dependent multi-file features |
 
-## Start here: run the prompt directly
+## The experiment: auth system
 
-The fastest way to try this is a single Ollama session. No scripts needed.
+The team prompt used across all runs:
 
-**Step 1 — Start the model:**
-```bash
-ollama run gemma4:e2b
-```
-
-**Step 2 — Paste this team prompt:**
 ```
 I need to build a user authentication system. Spawn separate agents to handle:
 
@@ -31,25 +27,47 @@ I need to build a user authentication system. Spawn separate agents to handle:
 4. Review: Review all code produced by the other agents for security issues
 ```
 
-Observe how the model handles role decomposition and whether it produces coherent, distinct outputs per agent.
+Claude Code reliably spawned 4 parallel agents. `gemma4:e2b` completed the task but struggled with file editing and hallucinated scripts. The generated code was then corrected and completed with Sonnet 4.6.
 
-## Prerequisites
+## Running the example
 
-- [Ollama](https://ollama.com) running locally
-- The target model pulled: `ollama pull gemma4:e2b`
+### Prerequisites
+
+- [Node.js](https://nodejs.org) running locally
+- [Ollama](https://ollama.com) running locally with your target model pulled
+
+### Start everything
+
+```bash
+npm run start:app
+```
+
+Starts the Express backend, waits until it's healthy, then opens `http://localhost:3000` in your browser. The backend serves both the API and the React frontend — no separate build step needed.
+
+### Run the tests
+
+With the backend running in another terminal:
+
+```bash
+npm test
+```
+
+Runs 9 integration tests against the live server using Node.js's built-in `node:test` runner.
 
 ## npm scripts
 
-The `package.json` scripts are convenience launchers for when we add a parallel orchestration layer.
-
 ```bash
-npm start              # same as launch:gemma4
-npm run launch:gemma4  # sets OLLAMA_MODEL=gemma4:e2b
+npm start                # launch Claude Code with gemma4:e2b via Ollama
+npm run launch:gemma4    # ollama launch claude --model gemma4:e2b
+npm run launch:gpt-oss   # ollama launch claude --model gpt-oss:20b
+npm run start:backend    # node server.js (serves API + frontend at :3000)
+npm run start:frontend   # open http://localhost:3000
+npm test                 # node --test tests/auth.test.js
 ```
 
-To add a new model, add a script to `package.json`:
+To add a new model:
 ```json
-"launch:<model>": "OLLAMA_MODEL=<ollama-model-tag> node index.js"
+"launch:<model>": "ollama launch claude --model <ollama-model-tag>"
 ```
 
 ## Related
