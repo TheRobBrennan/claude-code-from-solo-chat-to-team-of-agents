@@ -16,7 +16,8 @@
     "launch:gpt-oss": "ollama launch claude --model gpt-oss:20b",
     "start:backend": "node server.js",
     "start:frontend": "open http://localhost:3000",
-    "test": "node --test tests/auth.test.js"
+    "test": "node --test tests/auth.test.js",
+    "start:app": "bash scripts/start-app.sh"
   },
   "keywords": [],
   "author": "Rob Brennan <rob@sploosh.ai>",
